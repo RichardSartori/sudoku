@@ -1,12 +1,15 @@
-Examples of Sudoku solvers:
-	[in Javascript](https://github.com/philippemilink/SudokuSolver)
-	[in C++](https://youtu.be/VPVtlODPdPY)
-	[in Python](https://youtu.be/G_UYXzGuqvM)
+# Sudoku
+sudoku solver written in Rust
 
-Usage:
+# Usage:
 ```bash
 cargo run --release -- `cat example.txt`
 ```
 
-TODO:
-	use extern crate for bitset
+# Examples of Sudoku solvers:
+* [in Javascript](https://github.com/philippemilink/SudokuSolver)
+* [in C++](https://youtu.be/VPVtlODPdPY)
+* [in Python](https://youtu.be/G_UYXzGuqvM)
+
+# TODO:
+* use extern crate for bitset
