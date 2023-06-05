@@ -3,7 +3,7 @@ sudoku solver written in Rust
 
 # Usage:
 ```bash
-cargo run --release -- `cat example.txt`
+cargo run --release --features 9x9 -- `cat src/examples/9x9`
 ```
 
 # Examples of Sudoku solvers:

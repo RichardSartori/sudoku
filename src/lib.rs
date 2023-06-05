@@ -1,25 +1,59 @@
 use std::{cmp, default, fmt, iter, ops, slice, str};
 
-/** SETUP **/
+/** CONFIGURATION **/
 
-const ROW_PER_BLOCK: usize = 3;
-const COL_PER_BLOCK: usize = 3;
-const SYMBOLS: [ &str; SIZE ] = [ "1", "2", "3", "4", "5", "6", "7", "8", "9" ];
-const PLACEHOLDER: &str = "_";
-const SEPARATOR: char = ',';
+macro_rules! incompatible_features {
+	($f1:literal, $f2:literal) => {
+		#[cfg(all(feature = $f1, feature = $f2))]
+		compile_error!("incompatible features");
+	}
+}
+
+incompatible_features!("4x4", "6x6");
+incompatible_features!("4x4", "9x9");
+incompatible_features!("6x6", "9x9");
+
+#[cfg(feature = "9x9")]
+mod config {
+	pub const ROW_PER_BLOCK: usize = 3;
+	pub const COL_PER_BLOCK: usize = 3;
+	pub const SYMBOLS: [ &str; crate::SIZE ] = [
+		"1", "2", "3", "4", "5", "6", "7", "8", "9"
+	];
+}
+
+#[cfg(feature = "6x6")]
+mod config {
+	pub const ROW_PER_BLOCK: usize = 2;
+	pub const COL_PER_BLOCK: usize = 3;
+	pub const SYMBOLS: [ &str; crate::SIZE ] = [
+		"1", "2", "3", "4", "5", "6"
+	];
+}
+
+#[cfg(feature = "4x4")]
+mod config {
+	pub const ROW_PER_BLOCK: usize = 2;
+	pub const COL_PER_BLOCK: usize = 2;
+	pub const SYMBOLS: [ &str; crate::SIZE ] = [
+		"1", "2", "3", "4"
+	];
+}
 
 // conversions between symbols and indices
 fn from_symbol(symbol: &str) -> Option<usize> {
-	SYMBOLS.iter().position(|&s| s == symbol)
+	config::SYMBOLS.iter().position(|&s| s == symbol)
 }
 fn from_index(index: usize) -> &'static str {
-	SYMBOLS[index]
+	config::SYMBOLS[index]
 }
 
 /** CONSTANTS **/
 
-const SIZE: usize = ROW_PER_BLOCK * COL_PER_BLOCK;
+const SIZE: usize = config::ROW_PER_BLOCK * config::COL_PER_BLOCK;
 const INDICES: ops::Range<usize> = 0..SIZE;
+const PLACEHOLDER: &str = "_";
+const SEPARATOR: char = ',';
 
 /** DIGIT **/
 
@@ -192,7 +226,8 @@ impl Cursor {
 	fn item(&self) -> CursorItem {
 		let row = self.index / SIZE;
 		let col = self.index % SIZE;
-		let blk = (row / ROW_PER_BLOCK) * ROW_PER_BLOCK + (col / COL_PER_BLOCK);
+		let blk = (row / config::ROW_PER_BLOCK) * config::ROW_PER_BLOCK
+			+ (col / config::COL_PER_BLOCK);
 		(row, col, blk)
 	}
 
@@ -349,6 +384,9 @@ impl Iterator for Solver {
 	}
 }
 
+/** TESTS **/
+
+#[cfg(feature = "9x9")]
 #[cfg(test)]
 mod tests {
 	use super::*;
