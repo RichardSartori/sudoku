@@ -15,13 +15,11 @@ fn main() -> Result<(), MainError> {
 		.next()
 		.ok_or(MainError::MissingInput)?
 		.parse::<sudoku::Grid>()
-		.map_err(|err| MainError::ParseGrid(err))?;
+		.map_err(MainError::ParseGrid)?;
 	println!("Input:{grid}");
 
 	println!("Solving");
-	let solver = grid
-		.solve()
-		.map_err(|err| MainError::Solver(err))?;
+	let solver = grid.solve().map_err(MainError::Solver)?;
 	for (n, solution) in solver.enumerate() {
 		println!("solution[{n}]:{solution}");
 	}

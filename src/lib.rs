@@ -44,7 +44,7 @@ mod config {
 fn from_symbol(symbol: &str) -> Option<usize> {
 	config::SYMBOLS.iter().position(|&s| s == symbol)
 }
-fn from_index(index: usize) -> &'static str {
+const fn from_index(index: usize) -> &'static str {
 	config::SYMBOLS[index]
 }
 
@@ -73,22 +73,22 @@ impl str::FromStr for Digit {
 	type Err = ParseDigitError;
 	fn from_str(slice: &str) -> Result<Self, Self::Err> {
 		if slice == PLACEHOLDER {
-			return Ok(Digit::None);
+			return Ok(Self::None);
 		}
 		let index = from_symbol(slice)
 			.ok_or(ParseDigitError::Unknown)?;
 		let given = true;
-		Ok(Digit::Some { given, index })
+		Ok(Self::Some { given, index })
 	}
 }
 
 impl fmt::Display for Digit {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		match *self {
-			Digit::None => write!(f, "{}", PLACEHOLDER),
-			Digit::Some { index, .. } => {
+			Self::None => write!(f, "{PLACEHOLDER}"),
+			Self::Some { index, .. } => {
 				let symbol = from_index(index);
-				write!(f, "{}", symbol)
+				write!(f, "{symbol}")
 			},
 		}
 	}
@@ -97,8 +97,8 @@ impl fmt::Display for Digit {
 impl cmp::PartialEq for Digit {
 	fn eq(&self, other: &Self) -> bool {
 		match (self, other) {
-			(Digit::None, Digit::None) => true,
-			(Digit::Some { index: a, .. }, Digit::Some { index: b, .. }) => {
+			(Self::None, Self::None) => true,
+			(Self::Some { index: a, .. }, Self::Some { index: b, .. }) => {
 				a == b
 			},
 			_ => false,
@@ -121,7 +121,7 @@ impl BitSet {
 		(self.0)[index] = false;
 	}
 
-	fn contains(&self, index: usize) -> bool {
+	const fn contains(&self, index: usize) -> bool {
 		(self.0)[index]
 	}
 }
@@ -129,10 +129,10 @@ impl BitSet {
 impl ops::BitOr for BitSet {
 	type Output = Self;
 	fn bitor(self, rhs: Self) -> Self::Output {
-		let mut result: Self = Default::default();
+		let mut result = Self::default();
 		for index in INDICES {
 			if self.contains(index) | rhs.contains(index) {
-				result.set(index)
+				result.set(index);
 			}
 		}
 		result
@@ -146,12 +146,18 @@ pub struct Grid([[ Digit; SIZE ]; SIZE ]);
 
 impl Grid {
 
-	fn iter_mut<'a>(&'a mut self)
-		-> iter::Flatten<slice::IterMut<'a, [ Digit; SIZE ]>>
+	fn iter_mut(&mut self)
+		-> iter::Flatten<slice::IterMut<'_, [ Digit; SIZE ]>>
 	{
 		return self.0.iter_mut().flatten()
 	}
 
+	/// Return an iterator over the solutions of the grid
+	///
+	/// # Errors
+	///
+	/// return an error if the grid is invalid and can not be solved
+	///
 	pub fn solve(self) -> Result<Solver, SolverError> {
 		Solver::try_from(self)
 	}
@@ -166,7 +172,7 @@ pub enum ParseGridError {
 impl str::FromStr for Grid {
 	type Err = ParseGridError;
 	fn from_str(value: &str) -> Result<Self, Self::Err> {
-		let mut result: Self = Default::default();
+		let mut result = Self::default();
 		let mut grid_iter = result.iter_mut();
 		let mut value_iter = value.split(SEPARATOR);
 		loop {
@@ -180,7 +186,7 @@ impl str::FromStr for Grid {
 				(Some(slice), Some(cell)) => {
 					*cell = slice
 						.parse::<Digit>()
-						.map_err(|err| ParseGridError::ParseDigit(err))?;
+						.map_err(ParseGridError::ParseDigit)?;
 				},
 			}
 		}
@@ -191,7 +197,7 @@ impl str::FromStr for Grid {
 impl fmt::Display for Grid {
 	fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 		for row in self.0 {
-			write!(f, "\n")?;
+			writeln!(f)?;
 			for digit in row {
 				write!(f, "{digit},")?;
 			}
@@ -223,7 +229,7 @@ enum CursorError {
 
 impl Cursor {
 
-	fn item(&self) -> CursorItem {
+	const fn item(&self) -> CursorItem {
 		let row = self.index / SIZE;
 		let col = self.index % SIZE;
 		let blk = (row / config::ROW_PER_BLOCK) * config::ROW_PER_BLOCK
@@ -252,16 +258,17 @@ impl Cursor {
 	}
 
 	fn skip(&mut self) -> Result<(), CursorError> {
-		match self.forward {
-			true  => self.next(),
-			false => self.prev(),
+		if self.forward {
+			self.next()
+		} else {
+			self.prev()
 		}
 	}
 }
 
 impl default::Default for Cursor {
 	fn default() -> Self {
-		Cursor { index: 0, forward: true }
+		Self { index: 0, forward: true }
 	}
 }
 
@@ -276,12 +283,13 @@ pub struct Solver {
 }
 
 impl Solver {
-	fn new(grid: Grid) -> Self {
-		let cursor = Default::default();
+	fn new(grid: &Grid) -> Self {
+		let grid = *grid;
+		let cursor = Cursor::default();
 		let row_states = Default::default();
 		let col_states = Default::default();
 		let blk_states = Default::default();
-		Solver { grid, cursor, row_states, col_states, blk_states }
+		Self { grid, cursor, row_states, col_states, blk_states }
 	}
 }
 
@@ -293,8 +301,8 @@ pub enum SolverError {
 impl TryFrom<Grid> for Solver {
 	type Error = SolverError;
 	fn try_from(value: Grid) -> Result<Self, Self::Error> {
-		let mut result = Solver::new(value);
-		let mut cursor: Cursor = Default::default();
+		let mut result = Self::new(&value);
+		let mut cursor = Cursor::default();
 		loop {
 			let (row, col, blk) = cursor.item();
 			if let Digit::Some { index, .. } = (result.grid.0)[row][col] {
@@ -345,7 +353,7 @@ impl Iterator for Solver {
 								return None;
 							},
 							CursorError::AfterEnd => {
-								return Some(self.grid.clone());
+								return Some(self.grid);
 							},
 						}
 					}
@@ -376,7 +384,7 @@ impl Iterator for Solver {
 					let given = false;
 					(self.grid.0)[row][col] = Digit::Some { given, index };
 					if Cursor::next(&mut self.cursor).is_err() {
-						return Some(self.grid.clone());
+						return Some(self.grid);
 					}
 				},
 			}
